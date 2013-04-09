@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Demo</title>
+    <style>
+      #img { display: none; }
+    </style>
+  </head>
+  <body>
+    <div>
+      <img src="/example/test1.jpg" id="img" />
+    </div>
+    <script src="/js/puzzle.js"></script>
+    <script src="/vendor/domready.js"></script>
+    <script>
+      domready(function() {
+        var img = document.getElementById('img');
+        img.addEventListener('load', function() {
+          var puzzle = new Puzzle();
+          puzzle.getImageSignature(img);
+        });
+      });
+    </script>
+  </body>
+</html>
