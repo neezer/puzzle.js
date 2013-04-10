@@ -42,7 +42,7 @@
     };
 
     Puzzle.prototype.create9x9DifferenceGrid = function(canvas) {
-      var cols, colsToCrop, height, imgData, rows, rowsToCrop, width;
+      var averageGrayLevels, cols, colsToCrop, handlePoints, height, imgData, p, rows, rowsToCrop, width;
       width = canvas.width;
       height = canvas.height;
       imgData = canvas.getContext('2d').getImageData(0, 0, width, height);
@@ -52,11 +52,68 @@
       colsToCrop = this.calcCrop(cols, width, 'cols');
       this.cropRows(canvas, rowsToCrop);
       this.cropCols(canvas, colsToCrop);
-      return this.gridifyImage(canvas);
+      handlePoints = this.computeHandlePoints(canvas);
+      p = this.computePValue(canvas);
+      averageGrayLevels = this.computeAverageGrayLevels(canvas, handlePoints, p);
+      return this.addSampleSquaresToImage(canvas, averageGrayLevels, p);
     };
 
-    Puzzle.prototype.gridifyImage = function(canvas) {
-      var ctx, i, interval, x, xInt, xPaths, y, yInt, yPaths, _i, _j, _k, _len, _len1, _ref, _results;
+    Puzzle.prototype.computeAverageGrayLevels = function(canvas, handles, p) {
+      var ctx, imgData, pixel, point, sum, total, _i, _j, _len, _len1, _ref, _step;
+      ctx = canvas.getContext('2d');
+      for (_i = 0, _len = handles.length; _i < _len; _i++) {
+        point = handles[_i];
+        imgData = ctx.getImageData(point.x - p / 2, point.y - p / 2, p, p);
+        sum = 0;
+        total = 0;
+        _ref = imgData.data;
+        for (_j = 0, _len1 = _ref.length, _step = 4; _j < _len1; _j += _step) {
+          pixel = _ref[_j];
+          sum += pixel;
+          total++;
+        }
+        point.fill = sum / total;
+      }
+      return handles;
+    };
+
+    Puzzle.prototype.addSampleSquaresToImage = function(canvas, handles, p) {
+      var c, cToHex, ctx, point, _i, _len, _results;
+      ctx = canvas.getContext('2d');
+      cToHex = function(c) {
+        var hex;
+        hex = Math.floor(c).toString(16);
+        if (hex.length === 1) {
+          return '0' + hex;
+        } else {
+          return hex;
+        }
+      };
+      _results = [];
+      for (_i = 0, _len = handles.length; _i < _len; _i++) {
+        point = handles[_i];
+        c = "#" + (cToHex(point.fill)) + (cToHex(point.fill)) + (cToHex(point.fill));
+        ctx.beginPath();
+        ctx.rect(point.x - p / 2, point.y - p / 2, p, p);
+        ctx.fillStyle = c;
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#fff';
+        _results.push(ctx.stroke());
+      }
+      return _results;
+    };
+
+    Puzzle.prototype.computePValue = function(canvas) {
+      var P;
+      P = function(m, n) {
+        return Math.max(2, Math.floor(.5 + Math.min(n, m) / 20));
+      };
+      return P(canvas.width, canvas.height);
+    };
+
+    Puzzle.prototype.computeHandlePoints = function(canvas) {
+      var handles, i, interval, x, xInt, xPaths, y, yInt, yPaths, _i, _j, _k, _len, _len1, _ref;
       interval = 10;
       xInt = Math.round(canvas.width / interval);
       yInt = Math.round(canvas.height / interval);
@@ -68,8 +125,35 @@
           yPaths.push(Math.round(yInt * i));
         }
       }
+      handles = [];
+      for (_j = 0, _len = yPaths.length; _j < _len; _j++) {
+        y = yPaths[_j];
+        for (_k = 0, _len1 = xPaths.length; _k < _len1; _k++) {
+          x = xPaths[_k];
+          handles.push({
+            x: x,
+            y: y
+          });
+        }
+      }
+      return handles;
+    };
+
+    Puzzle.prototype.gridifyImage = function(canvas, handles) {
+      var ctx, point, x, xPaths, y, yPaths, _i, _j, _k, _len, _len1, _len2, _results;
+      xPaths = [];
+      yPaths = [];
+      for (_i = 0, _len = handles.length; _i < _len; _i++) {
+        point = handles[_i];
+        if (xPaths.indexOf(point.x) === -1) {
+          xPaths.push(point.x);
+        }
+        if (yPaths.indexOf(point.y) === -1) {
+          yPaths.push(point.y);
+        }
+      }
       ctx = canvas.getContext('2d');
-      for (_j = 0, _len = xPaths.length; _j < _len; _j++) {
+      for (_j = 0, _len1 = xPaths.length; _j < _len1; _j++) {
         x = xPaths[_j];
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -79,7 +163,7 @@
         ctx.stroke();
       }
       _results = [];
-      for (_k = 0, _len1 = yPaths.length; _k < _len1; _k++) {
+      for (_k = 0, _len2 = yPaths.length; _k < _len2; _k++) {
         y = yPaths[_k];
         ctx.beginPath();
         ctx.moveTo(0, y);
@@ -133,13 +217,13 @@
       return rows;
     };
 
-    Puzzle.prototype.calcCrop = function(array, dimension, dimension_type) {
+    Puzzle.prototype.calcCrop = function(array, dimension, dimensionType) {
       var fivePercent, total;
       total = array.reduce((function(a, b) {
         return a + b;
       }), 0);
       fivePercent = Math.round(total * .05);
-      return this.pingPongCrop(array, dimension, fivePercent, dimension_type);
+      return this.pingPongCrop(array, dimension, fivePercent, dimensionType);
     };
 
     Puzzle.prototype.pingPongCrop = function(array, max, target, type) {

@@ -39,9 +39,51 @@ window.Puzzle = class Puzzle
     @cropRows canvas, rowsToCrop
     @cropCols canvas, colsToCrop
 
-    @gridifyImage canvas
+    handlePoints = @computeHandlePoints canvas
 
-  gridifyImage: (canvas) ->
+    # @gridifyImage canvas, handlePoints # dev
+
+    p = @computePValue canvas
+
+    # NOTE unclear based on the outlined step three if I need to sample each
+    # pixel as the average of a 3x3 grid centered on each pixel... seems kinda
+    # excessive; electing to proceed without this for now
+
+    averageGrayLevels = @computeAverageGrayLevels canvas, handlePoints, p
+    @addSampleSquaresToImage canvas, averageGrayLevels, p
+
+  computeAverageGrayLevels: (canvas, handles, p) ->
+    ctx = canvas.getContext '2d'
+    for point in handles
+      imgData = ctx.getImageData (point.x - p/2), (point.y - p/2), p, p
+      sum = 0
+      total = 0
+      for pixel in imgData.data by 4
+        sum += pixel
+        total++
+      point.fill = sum / total
+    handles
+
+  addSampleSquaresToImage: (canvas, handles, p) ->
+    ctx = canvas.getContext '2d'
+    cToHex = (c) ->
+      hex = Math.floor(c).toString(16)
+      if hex.length is 1 then '0' + hex else hex
+    for point in handles
+      c = "##{cToHex(point.fill)}#{cToHex(point.fill)}#{cToHex(point.fill)}"
+      ctx.beginPath()
+      ctx.rect (point.x - p/2), (point.y - p/2), p, p
+      ctx.fillStyle = c
+      ctx.fill()
+      ctx.lineWidth = 2
+      ctx.strokeStyle = '#fff'
+      ctx.stroke()
+
+  computePValue: (canvas) ->
+    P = (m, n) -> Math.max(2, Math.floor(.5 + Math.min(n, m)/20))
+    P canvas.width, canvas.height
+
+  computeHandlePoints: (canvas) ->
     interval = 10
     xInt = Math.round canvas.width / interval
     yInt = Math.round canvas.height / interval
@@ -51,6 +93,18 @@ window.Puzzle = class Puzzle
       unless i is 0
         xPaths.push Math.round(xInt * i)
         yPaths.push Math.round(yInt * i)
+    handles = []
+    for y in yPaths
+      for x in xPaths
+        handles.push { x: x, y: y }
+    handles
+
+  gridifyImage: (canvas, handles) ->
+    xPaths = []
+    yPaths = []
+    for point in handles
+      xPaths.push(point.x) if xPaths.indexOf(point.x) is -1
+      yPaths.push(point.y) if yPaths.indexOf(point.y) is -1
 
     ctx = canvas.getContext '2d'
 
@@ -100,10 +154,10 @@ window.Puzzle = class Puzzle
       rows.push diffs.reduce(((a,b) -> a + b), 0)
     rows
 
-  calcCrop: (array, dimension, dimension_type) ->
+  calcCrop: (array, dimension, dimensionType) ->
     total = array.reduce ((a,b) -> a + b), 0
     fivePercent = Math.round total * .05
-    @pingPongCrop array, dimension, fivePercent, dimension_type
+    @pingPongCrop array, dimension, fivePercent, dimensionType
 
   pingPongCrop: (array, max, target, type) ->
     min = 0
