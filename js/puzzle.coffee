@@ -1,5 +1,41 @@
+# borrowd from lodash.js:
+# https://github.com/bestiejs/lodash/blob/master/lodash.js
+_ =
+  isArray: Array.isArray || (value) ->
+    value instanceof Array || toString.call(value) == '[object Array]'
+
+  flatten: (array, isShallow) ->
+    index = -1
+    length = if array then array.length else 0
+    result = []
+    if typeof isShallow is 'boolean' and isShallow is not null
+      isShallow = false
+    while ++index < length
+      value = array[index]
+      if _.isArray(value)
+        result.push.apply(result, if isShallow then value else _.flatten(value))
+      else
+        result.push(value)
+    result
+
 window.Puzzle = class Puzzle
   strokeStyle: 'rgba(255, 0, 0, 0.25)'
+  samenessThreshold: 0.05
+  comparators:
+    isMuchDarker: (v, min, upperMin) ->
+      return false if min is false or upperMin is false
+      if v >= min and v < upperMin then -2 else false
+    isDarker: (v, upperMin, center) ->
+      return false if upperMin is false
+      if v >= upperMin and v < (center - 2) then -1 else false
+    isSame: (v, center) ->
+      if (center - 2) <= v and v <= (center + 2) then 0 else false
+    isLighter: (v, center, lowerMax) ->
+      return false if lowerMax is false
+      if v > (center + 2) and v <= lowerMax then 1 else false
+    isMuchLighter: (v, lowerMax, max) ->
+      return false if max is false or lowerMax is false
+      if v > lowerMax and v <= max then 2 else false
 
   getImageSignature: (img) ->
     canvas = @createCanvas img.width, img.height
@@ -55,11 +91,55 @@ window.Puzzle = class Puzzle
     handlePoints = @computeAverageGrayLevels canvas, handlePoints, p
     @addSampleSquaresToImage canvas, handlePoints, p
 
-    handlePoints = @computeRelativeNeighborGrayLevels handlePoints
+    vectorArray = @computeRelativeNeighborGrayLevels handlePoints
+    console.log vectorArray
 
   computeRelativeNeighborGrayLevels: (handles) ->
-    # represent non-existant sample squares as 0 entries in the array
-    # minColor = hanldes
+    matrix = []
+    i = 0
+    matrix.push(handles.slice(i * 9, i * 9 + 9)) and i++ while i < 9
+    vectorArray = []
+
+    for rowIndex in [0..(matrix.length - 1)]
+      for colIndex in [0..(matrix[rowIndex].length - 1)]
+        neighbors = [
+          matrix[(rowIndex - 1)]?[(colIndex - 1)]?.fill
+          matrix[(rowIndex - 1)]?[colIndex]?.fill
+          matrix[(rowIndex - 1)]?[(colIndex + 1)]?.fill
+          matrix[rowIndex]?[(colIndex - 1)]?.fill
+          matrix[rowIndex]?[(colIndex + 1)]?.fill
+          matrix[(rowIndex + 1)]?[(colIndex - 1)]?.fill
+          matrix[(rowIndex + 1)]?[colIndex]?.fill
+          matrix[(rowIndex + 1)]?[(colIndex + 1)]?.fill
+        ]
+
+        center = matrix[rowIndex][colIndex].fill
+        min = do -> Math.min.apply Math, neighbors.filter(Number)
+        min = false if center < min
+        max = do -> Math.max.apply Math, neighbors.filter(Number)
+        max = false if center > lowerMax
+
+        upperMin = do =>
+          tolerance = Math.floor (center - min) * @samenessThreshold
+          v = Math.floor (min + (center - tolerance)) / 2
+          if center < v then false else v
+        lowerMax = do =>
+          tolerance = Math.floor (max - center) * @samenessThreshold
+          v = Math.floor (max + (center + tolerance)) / 2
+          if center > v then false else v
+
+        rNeighbors = []
+        for n in neighbors
+          v = @comparators.isMuchDarker(n, min, upperMin)
+          v = @comparators.isDarker(n, upperMin, center)    if v is false
+          v = @comparators.isSame(n, center)                if v is false
+          v = @comparators.isLighter(n, center, lowerMax)   if v is false
+          v = @comparators.isMuchLighter(n, lowerMax, max)  if v is false
+          v = 0                                             if v is false
+          rNeighbors.push v
+        vectorArray.push rNeighbors
+
+    vectorArray
 
   computeAverageGrayLevels: (canvas, handles, p) ->
     ctx = canvas.getContext '2d'
@@ -137,8 +217,8 @@ window.Puzzle = class Puzzle
     d = imgData.data
     cols = new Array
     for x in [0..(width - 1)]
-      mx = x * 4 # starting pixel, top of each column
       diffs = new Array
+      mx = x * 4 # starting pixel, top of each column
       nmx = mx + width * 4
       while d[nmx]?
         diffs.push Math.abs(d[mx] - d[nmx])
