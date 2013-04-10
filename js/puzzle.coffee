@@ -1,8 +1,10 @@
 window.Puzzle = class Puzzle
+  strokeStyle: 'rgba(255, 0, 0, 0.25)'
+
   getImageSignature: (img) ->
     canvas = @createCanvas img.width, img.height
     @drawImageOnCanvas canvas, img
-    @create9x9DifferenceGrid canvas
+    @computeVectorPoints canvas
 
   createCanvas: (w, h) ->
     c = document.getElementById 'canvas'
@@ -26,7 +28,7 @@ window.Puzzle = class Puzzle
       imgData.data[i] = imgData.data[i+1] = imgData.data[i+2] = v
     ctx.putImageData imgData, 0, 0
 
-  create9x9DifferenceGrid: (canvas) ->
+  computeVectorPoints: (canvas) ->
     width = canvas.width
     height = canvas.height
     imgData = canvas.getContext('2d').getImageData(0, 0, width, height)
@@ -41,16 +43,23 @@ window.Puzzle = class Puzzle
 
     handlePoints = @computeHandlePoints canvas
 
-    # @gridifyImage canvas, handlePoints # dev
+    @gridifyImage canvas, handlePoints # dev
 
     p = @computePValue canvas
 
     # NOTE unclear based on the outlined step three if I need to sample each
     # pixel as the average of a 3x3 grid centered on each pixel... seems kinda
-    # excessive; electing to proceed without this for now
+    # excessive; electing to proceed without this for now, but should this
+    # actually be necessary, this is the place to insert the logic
 
-    averageGrayLevels = @computeAverageGrayLevels canvas, handlePoints, p
-    @addSampleSquaresToImage canvas, averageGrayLevels, p
+    handlePoints = @computeAverageGrayLevels canvas, handlePoints, p
+    @addSampleSquaresToImage canvas, handlePoints, p
+
+    handlePoints = @computeRelativeNeighborGrayLevels handlePoints
+
+  computeRelativeNeighborGrayLevels: (handles) ->
+    # represent non-existant sample squares as 0 entries in the array
+    # minColor = hanldes
 
   computeAverageGrayLevels: (canvas, handles, p) ->
     ctx = canvas.getContext '2d'
@@ -61,13 +70,13 @@ window.Puzzle = class Puzzle
       for pixel in imgData.data by 4
         sum += pixel
         total++
-      point.fill = sum / total
+      point.fill = Math.floor(sum / total)
     handles
 
   addSampleSquaresToImage: (canvas, handles, p) ->
     ctx = canvas.getContext '2d'
     cToHex = (c) ->
-      hex = Math.floor(c).toString(16)
+      hex = c.toString(16)
       if hex.length is 1 then '0' + hex else hex
     for point in handles
       c = "##{cToHex(point.fill)}#{cToHex(point.fill)}#{cToHex(point.fill)}"
@@ -76,7 +85,7 @@ window.Puzzle = class Puzzle
       ctx.fillStyle = c
       ctx.fill()
       ctx.lineWidth = 2
-      ctx.strokeStyle = '#fff'
+      ctx.strokeStyle = @strokeStyle
       ctx.stroke()
 
   computePValue: (canvas) ->
@@ -113,7 +122,7 @@ window.Puzzle = class Puzzle
       ctx.moveTo x, 0
       ctx.lineTo x, canvas.height
       ctx.closePath()
-      ctx.strokeStyle = '#f00'
+      ctx.strokeStyle = @strokeStyle
       ctx.stroke()
 
     for y in yPaths
@@ -121,7 +130,7 @@ window.Puzzle = class Puzzle
       ctx.moveTo 0, y
       ctx.lineTo canvas.width, y
       ctx.closePath()
-      ctx.strokeStyle = '#f00'
+      ctx.strokeStyle = @strokeStyle
       ctx.stroke()
 
   collatePixelColumns: (imgData, width, height) ->

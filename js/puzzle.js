@@ -6,11 +6,13 @@
 
     function Puzzle() {}
 
+    Puzzle.prototype.strokeStyle = 'rgba(255, 0, 0, 0.25)';
+
     Puzzle.prototype.getImageSignature = function(img) {
       var canvas;
       canvas = this.createCanvas(img.width, img.height);
       this.drawImageOnCanvas(canvas, img);
-      return this.create9x9DifferenceGrid(canvas);
+      return this.computeVectorPoints(canvas);
     };
 
     Puzzle.prototype.createCanvas = function(w, h) {
@@ -41,8 +43,8 @@
       return ctx.putImageData(imgData, 0, 0);
     };
 
-    Puzzle.prototype.create9x9DifferenceGrid = function(canvas) {
-      var averageGrayLevels, cols, colsToCrop, handlePoints, height, imgData, p, rows, rowsToCrop, width;
+    Puzzle.prototype.computeVectorPoints = function(canvas) {
+      var cols, colsToCrop, handlePoints, height, imgData, p, rows, rowsToCrop, width;
       width = canvas.width;
       height = canvas.height;
       imgData = canvas.getContext('2d').getImageData(0, 0, width, height);
@@ -53,10 +55,14 @@
       this.cropRows(canvas, rowsToCrop);
       this.cropCols(canvas, colsToCrop);
       handlePoints = this.computeHandlePoints(canvas);
+      this.gridifyImage(canvas, handlePoints);
       p = this.computePValue(canvas);
-      averageGrayLevels = this.computeAverageGrayLevels(canvas, handlePoints, p);
-      return this.addSampleSquaresToImage(canvas, averageGrayLevels, p);
+      handlePoints = this.computeAverageGrayLevels(canvas, handlePoints, p);
+      this.addSampleSquaresToImage(canvas, handlePoints, p);
+      return handlePoints = this.computeRelativeNeighborGrayLevels(handlePoints);
     };
+
+    Puzzle.prototype.computeRelativeNeighborGrayLevels = function(handles) {};
 
     Puzzle.prototype.computeAverageGrayLevels = function(canvas, handles, p) {
       var ctx, imgData, pixel, point, sum, total, _i, _j, _len, _len1, _ref, _step;
@@ -72,7 +78,7 @@
           sum += pixel;
           total++;
         }
-        point.fill = sum / total;
+        point.fill = Math.floor(sum / total);
       }
       return handles;
     };
@@ -82,7 +88,7 @@
       ctx = canvas.getContext('2d');
       cToHex = function(c) {
         var hex;
-        hex = Math.floor(c).toString(16);
+        hex = c.toString(16);
         if (hex.length === 1) {
           return '0' + hex;
         } else {
@@ -98,7 +104,7 @@
         ctx.fillStyle = c;
         ctx.fill();
         ctx.lineWidth = 2;
-        ctx.strokeStyle = '#fff';
+        ctx.strokeStyle = this.strokeStyle;
         _results.push(ctx.stroke());
       }
       return _results;
@@ -159,7 +165,7 @@
         ctx.moveTo(x, 0);
         ctx.lineTo(x, canvas.height);
         ctx.closePath();
-        ctx.strokeStyle = '#f00';
+        ctx.strokeStyle = this.strokeStyle;
         ctx.stroke();
       }
       _results = [];
@@ -169,7 +175,7 @@
         ctx.moveTo(0, y);
         ctx.lineTo(canvas.width, y);
         ctx.closePath();
-        ctx.strokeStyle = '#f00';
+        ctx.strokeStyle = this.strokeStyle;
         _results.push(ctx.stroke());
       }
       return _results;
