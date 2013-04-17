@@ -93,15 +93,11 @@
 
     Puzzle.prototype.createCanvas = function(w, h) {
       var c;
-      c = document.getElementById('canvas');
-      if (c === null) {
-        c = document.createElement('canvas');
-        c.width = w;
-        c.height = h;
-        c.id = 'canvas';
-        document.body.appendChild(c);
-      }
-      return c;
+      c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      c.id = 'canvas';
+      return document.body.appendChild(c);
     };
 
     Puzzle.prototype.drawImageOnCanvas = function(canvas, image) {
@@ -120,7 +116,7 @@
     };
 
     Puzzle.prototype.computeVectorPoints = function(canvas) {
-      var cols, colsToCrop, handlePoints, height, imgData, p, rows, rowsToCrop, vectorArray, width;
+      var cols, colsToCrop, handlePoints, height, imgData, p, rows, rowsToCrop, vector, vectorArray, width;
       width = canvas.width;
       height = canvas.height;
       imgData = canvas.getContext('2d').getImageData(0, 0, width, height);
@@ -136,7 +132,8 @@
       handlePoints = this.computeAverageGrayLevels(canvas, handlePoints, p);
       this.addSampleSquaresToImage(canvas, handlePoints, p);
       vectorArray = this.computeRelativeNeighborGrayLevels(handlePoints);
-      return console.log(vectorArray);
+      vector = [].concat.apply([], vectorArray);
+      return console.log(vector, vector.length);
     };
 
     Puzzle.prototype.computeRelativeNeighborGrayLevels = function(handles) {

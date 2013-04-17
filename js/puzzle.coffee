@@ -43,14 +43,11 @@ window.Puzzle = class Puzzle
     @computeVectorPoints canvas
 
   createCanvas: (w, h) ->
-    c = document.getElementById 'canvas'
-    if c is null
-      c = document.createElement 'canvas'
-      c.width = w
-      c.height = h
-      c.id = 'canvas'
-      document.body.appendChild c
-    c
+    c = document.createElement 'canvas'
+    c.width = w
+    c.height = h
+    c.id = 'canvas'
+    document.body.appendChild c
 
   drawImageOnCanvas: (canvas, image) ->
     ctx = canvas.getContext('2d')
@@ -92,7 +89,8 @@ window.Puzzle = class Puzzle
     @addSampleSquaresToImage canvas, handlePoints, p
 
     vectorArray = @computeRelativeNeighborGrayLevels handlePoints
-    console.log vectorArray
+    vector = [].concat.apply [], vectorArray
+    console.log vector, vector.length
 
   computeRelativeNeighborGrayLevels: (handles) ->
     matrix = []

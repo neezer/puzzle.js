@@ -3,22 +3,29 @@
   <head>
     <title>Demo</title>
     <style>
-      #img { display: none; }
+      #img1, #img2 { display: none; }
     </style>
   </head>
   <body>
-    <div>
-      <img src="/example/test1.jpg" id="img" />
-    </div>
+    <img src="/example/test1.jpg" id="img1" />
+    <img src="/example/test2.jpg" id="img2" />
     <script src="/js/puzzle.js"></script>
     <script src="/vendor/domready.js"></script>
     <script>
       domready(function() {
-        var img = document.getElementById('img');
-        img.addEventListener('load', function() {
+
+        var img1 = document.getElementById('img1');
+        img1.addEventListener('load', function() {
           var puzzle = new Puzzle();
-          puzzle.getImageSignature(img);
+          puzzle.getImageSignature(img1);
         });
+
+        var img2 = document.getElementById('img2');
+        img2.addEventListener('load', function() {
+          var puzzle = new Puzzle();
+          puzzle.getImageSignature(img2);
+        });
+
       });
     </script>
   </body>
